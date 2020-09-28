@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<style>
+.bar {
+  background-color: #eee;
+  float:left;
+
+}
+.bar .item{
+  float:left;
+  display: block;
+  color: #000;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 17px;
+  border: 2px solid black;
+}
+.bar:focus {
+  background-color:red;
+}
+
+#tasklist{
+  list-style-type: none;
+}
+#tasklist li {
+
+  width: 70%;
+  padding: 40px;
+
+}
+
+.clockdiv{
+    font-family: sans-serif;
+    color: #000;
+    display: inline-block;
+    font-weight: 100;
+    text-align: center;
+}
+.clockdiv > div{
+    display: inline-block;
+}
+h1 {
+  font-family:Arial, Helvetica, sans-serif;
+}
+label {
+  font-family:Arial, Helvetica, sans-serif;
+}
+.ui-datepicker {
+  width: 216px;
+  height: auto;
+  margin: 5px auto 0;
+  font: 9pt Arial, sans-serif;
+  -webkit-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, .5);
+  -moz-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, .5);
+  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, .5);
+}
+.ui-datepicker a {
+  text-decoration: none;
+}
+.ui-datepicker table {
+  width: 100%;
+}
+.ui-datepicker-header {
+
+  color: #000;
+  font-weight: bold;
+  line-height: 30px;
+  border-width: 1px 0 0 0;
+  border-style: solid;
+  border-color: #111;
+}
+.ui-datepicker-title {
+  text-align: center;
+}
+
+.ui-datepicker-prev, .ui-datepicker-next {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  cursor: pointer;
+  line-height: 600%;
+  overflow: hidden;
+}
+.ui-datepicker-prev {
+  float: left;
+  background-position: center -30px;
+}
+.ui-datepicker-next {
+  float: right;
+  background-position: center 0px;
+}
+</style>
+  <body>
+    <center>
+      <h1> Task List </h1>
+      <button id="addtask" type="button" onclick="add_task()">Add Task </button>
+      <ul id ="tasklist">
+        <li class="container" id="container1">
+          <div class="bar">
+            <div class="item">
+              <div>
+                <label>Task</label>
+                <br>
+                <input type="text" style="width:300px;">
+              </div>
+              <br>
+            </div>
+            <div class="item">
+              <div>
+                <label>Due</label>
+                <br>
+                <input type="text" class="datepicker">
+              </div>
+              <br>
+            </div>
+          <div class="item">
+            <div>
+              <label>Responsibility</label>
+              <br>
+              <select>
+                <option> -Select- </option>
+                <option> 15-213 </option>
+                <option> 21-259 </option>
+                <option> Micro </option>
+                <option> Probability </option>
+                <option> Research </option>
+                <option> Personal </option>
+              </select>
+            </div>
+            <br>
+          </div>
+          <div class="item">
+            <div>
+              <label>Status</label>
+              <br>
+              <select class="status" onchange="colorChange(this)">
+                <option value="ns">Not Started</option>
+                <option value="ip">In Progress</option>
+                <option value="d" >Done</option>
+              </select>
+            </div>
+            <br>
+          </div>
+          <div class="item">
+            <label>Time</label>
+            <br>
+            <div class="clockdiv">
+              <div>
+                <span class="hours">00 : </span>
+              </div>
+              <div>
+                <span class="minutes">00 : </span>
+              </div>
+              <div>
+                <span class="seconds">00</span>
+              </div>
+            </div>
+          <br>
+            <button class="start" type="button" onclick="start_timer(this);">Play</button>
+            <button class="stop" type="button" onclick = "stop_timer(this);">Stop</button>
+            <button class="reset" type="button" onclick = "reset_timer(this);">Reset</button>
+          </div>
+        </div>
+        <span>
+          <button class="remove" type="button" onclick="remove(this);"> Remove </button>
+        </span>
+      </li>
+    </ul>
+  </center>
+  </body>
+<script>
+const newElemInner = document.getElementById("container1").innerHTML;
+const newElemOuter = document.getElementById("container1").outerHTML;
+var playing = {container1:false}; //indicator of whether timer is playing
+var reset = {container1:false}; //indicator of whether timer was just reset
+var timeinterval = {container1:false}; //continuous timer loop
+var startTime = {container1:Date.now()}; //get current time
+var pauseTime = {container1:Date.now()}; //reference for when timer is paused
+var elapsed_time = {container1:0}; //variable to hold elapsed time
+var temp = {container1:0}; //variable to help with pausing and playing
+/*
+if(localStorage.code){
+  document.getElementById("tasklist").innerHTML = localStorage.code;
+}
+else {
+  localStorage.code = document.getElementById("tasklist").innerHTML;
+}*/
+localStorage.playing=JSON.stringify(playing);
+function remove(elem) {
+  var container = elem.parentNode.parentNode;
+  var listnum = container.id[9];
+  var list = container.parentNode;
+  list.removeChild(container);
+
+  //console.log(container.id);
+  delete playing[container.id];
+  delete reset[container.id];
+  delete timeinterval[container.id];
+  delete startTime[container.id];
+  delete pauseTime[container.id];
+  delete elapsed_time[container.id];
+  delete temp[container.id];
+  //console.log(temp);
+  update_local();
+}
+function start_timer(elem) {
+  var container = elem.parentNode.parentNode.parentNode;
+  var i = parseInt(container.id[9])-1; //task number
+  //const clock = container.children[0].children[4].children[0];
+  //console.log(clock);
+  function increment() {
+    //const clock = document.getElementById("clockdiv");
+    const hoursSpan = container.getElementsByClassName("hours")[0];
+    const minutesSpan = container.getElementsByClassName("minutes")[0];
+    const secondsSpan = container.getElementsByClassName("seconds")[0];
+    var now = Date.now();
+    temp[container.id] = now-startTime[container.id];
+    elapsed_time[container.id] = Math.floor((now - startTime[container.id])/1000); //seconds elapsed
+    seconds = elapsed_time[container.id] % 60;
+    minutes = Math.floor(elapsed_time[container.id]/60) % 60;
+    hours = Math.floor(elapsed_time[container.id]/60/60);
+    hoursSpan.innerHTML = ('0' + hours + " : ").slice(-5);
+    minutesSpan.innerHTML = ('0' + minutes + " : ").slice(-5);
+    secondsSpan.innerHTML = ('0' + seconds).slice(-2);
+  }
+  //if timer being run for first time or being played after being paused
+  if(!playing[container.id] && !reset[container.id]) {
+    pauseTime[container.id] = Date.now()
+    startTime[container.id] = pauseTime[container.id] - temp[container.id];
+    timeinterval[container.id] = setInterval(increment, 1000);
+    playing[container.id]=true;
+    reset[container.id] = false
+  }
+  //if timer being run after being reset
+  else if(!playing[container.id] && reset[container.id]) {
+    startTime[container.id] = Date.now()
+    timeinterval[container.id] = setInterval(increment, 1000);
+    playing[container.id]=true;
+    reset[container.id] = false;
+  }
+}
+
+//function to pause timer
+function stop_timer(elem) {
+  var container = elem.parentNode.parentNode.parentNode;
+  var i = parseInt(container.id[9])-1; //task number
+  if(playing[container.id]){
+    clearInterval(timeinterval[container.id])
+    playing[container.id]=false;
+  }
+}
+
+//function to clear timer and set it to 0
+function reset_timer(elem) {
+  var container = elem.parentNode.parentNode.parentNode;
+  var i = parseInt(container.id[9])-1; //task number
+  clearInterval(timeinterval[container.id]);
+  startTime[container.id] = Date.now();
+  stop_timer(elem)
+  //const clock = container.children[0].children[4].children[0];
+  //const clock = document.getElementById("clockdiv");
+  const hoursSpan = container.getElementsByClassName("hours")[0];
+  const minutesSpan = container.getElementsByClassName("minutes")[0];
+  const secondsSpan = container.getElementsByClassName("seconds")[0];
+  hoursSpan.innerHTML = ("00 : ").slice(-5);
+  minutesSpan.innerHTML = ("00 : ").slice(-5);
+  secondsSpan.innerHTML = ("00").slice(-2);
+  reset[container.id]=true;
+}
+</script>
+<script>
+/*
+for(i = 0; i<3; i++) {
+  var itm = document.getElementById("container1");
+  var cln = itm.cloneNode(true);
+  cln.id = "container"+(2+i);
+  document.getElementById("tasklist").appendChild(cln);
+}*/
+$('#tasklist').sortable();
+$( function () {
+  $( ".datepicker" ).datepicker({
+    inline: true,
+    showOtherMonths: true,
+    dayNamesMin: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  });
+});
+function add_task() {
+  var itm = document.getElementsByClassName("container")[0];
+  if(itm == null){
+    document.getElementById("tasklist").innerHTML+= newElemOuter;
+    playing = {container1:false};
+    reset = {container1:false};
+    timeinterval = {container1:false};
+    startTime = {container1:Date.now()};
+    pauseTime = {container1:Date.now()};
+    elapsed_time = {container1:0};
+    temp = {container1:0};
+    }
+  else {
+    var cln = itm.cloneNode(true);
+    cln.id = "container"+(1+Date.now())
+    playing[cln.id] = false; //indicator of whether timer is playing
+    reset[cln.id] = false; //indicator of whether timer was just reset
+    timeinterval[cln.id] = ""; //continuous timer loop
+    startTime[cln.id] = Date.now(); //get current time
+    pauseTime[cln.id] = Date.now();  //reference for when timer is paused
+    elapsed_time[cln.id] = Date.now(); //variable to hold elapsed time
+    temp[cln.id] = 0;
+    cln.innerHTML = newElemInner;
+    var datepick = (cln.getElementsByClassName("datepicker"))[0];
+    $(datepick).datepicker();
+    document.getElementById("tasklist").appendChild(cln);
+  }
+  update_local();
+}
+function update_local(){
+  localStorage.code = document.getElementById("tasklist").innerHTML;
+}
+function colorChange(elem){
+  if(elem.value == "d") {
+      elem.parentElement.parentElement.parentElement.style.backgroundColor="lime";}
+  else{
+    elem.parentElement.parentElement.parentElement.style.backgroundColor="#eee";
+  }
+}
+
+
+</script>
+</html>
